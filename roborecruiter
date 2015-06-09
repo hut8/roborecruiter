@@ -1,11 +1,71 @@
 #!/usr/bin/env python3
 # -*-python-*-
 import requests
+import json
+from pprint import pprint
 
+DICE_API="http://service.dice.com/api/rest/jobsearch/v1/simple.json"
+
+SEARCH_QUERY = """
+("software engineer" OR "software developer" OR programmer) -army -sharepoint
+"""
+SEARCH_CITY = 12054
+
+SORT_AGE = 1
+SORT_TITLE = 2
+SORT_COMPANY = 3
+SORT_LOCATION = 4
+
+search_params = {
+    "text": SEARCH_QUERY,
+    "city": SEARCH_CITY,
+}
+
+class DiceJob(object):
+
+    def __init__(self, result_dict):
+        self.company = result_dict['company']
+        self.date = result_dict['date']
+        self.detail_url = result_dict['detailUrl']
+        self.job_title = result_dict['jobTitle']
+        self.location = result_dict['location']
+
+    def __str__(self):
+        return "Job: {} at {} [{}] [{}]".format(
+            self.job_title, self.company, self.location, self.date
+        )
+
+    def __repr__(self):
+        return self.__str__()
+
+def search_jobs_dice(params):
+    jobs = []
+    page = 0
+    while True:
+        page += 1
+        print("getting page {}".format(page))
+        params['page'] = page
+        r = requests.get(DICE_API, params=params)
+        r.raise_for_status()
+        d = r.json()
+        total_jobs = d['count']
+        first_document = d['firstDocument']
+        last_document = d['lastDocument']
+        print("got results {}-{} of {}".format(
+            first_document, last_document, total_jobs
+        ))
+        page_job_dicts = d['resultItemList']
+        jobs += [DiceJob(j) for j in page_job_dicts]
+
+        if last_document >= total_jobs: break
+
+    pprint(jobs)
+    return jobs
 
 
 def main():
     print("finding a job for you")
+    search_jobs_dice(search_params)
 
 if __name__=='__main__':
     main()
